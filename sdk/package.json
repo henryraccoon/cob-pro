@@ -5,9 +5,11 @@
   "license": "MIT",
   "devDependencies": {
     "esbuild": "^0.25.5",
+    "serve": "^14.2.4",
     "typescript": "^5.8.3"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --minify --outfile=dist/snippet.js --format=life"
+    "build": "esbuild src/index.ts --bundle --minify --outfile=dist/snippet.js --format=iife",
+    "serve": "serve dist"
   }
 }

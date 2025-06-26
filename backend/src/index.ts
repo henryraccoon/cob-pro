@@ -7,6 +7,7 @@ const sessions = new Map(); //key: sessionId, value: {host, guests[]}
 
 wss.on("connection", (ws) => {
   console.log("New WebSocket connection");
+
   ws.on("message", (message) => {
     const data = JSON.parse(message.toString());
     console.log("Received message:", data);
@@ -14,22 +15,37 @@ wss.on("connection", (ws) => {
     if (data.type === "register") {
       const { role, sessionId } = data;
       if (sessionId) sessions.set(sessionId, { host: null, guests: [] });
-      console.log("sessions: ", sessions);
+      if (role === "host") console.log("Host registered. Sessions: ", sessions);
+      if (role === "guest")
+        console.log("Guest connected. Sessions: ", sessions);
 
       const session = sessions.get(sessionId);
       if (role === "host") session.host = ws;
       else session.guests.push(ws);
-      console.log("sessions2: ", sessions);
+    }
+    if (data.type === "leave") {
+      const { role, sessionId, time } = data;
+
+      if (role === "host") {
+        console.log(
+          `Host closed the window. Session ${sessionId} has ended at ${time}.`
+        );
+        if (sessions.has(sessionId)) {
+          sessions.delete(sessionId);
+        }
+      }
+
+      if (role === "guest") console.log(`Guest disconnected at ${time}.`);
     }
 
-    if (data.type === "event") {
-      console.log("event data: ", data);
-      const { sessionId, payload } = data;
-      const session = sessions.get(sessionId);
-      session.guests.forEach((g: any) =>
-        g.send(JSON.stringify({ type: "event", payload }))
-      );
-    }
+    // if (data.type === "event") {
+    //   console.log("event data: ", data);
+    //   const { sessionId, payload } = data;
+    //   const session = sessions.get(sessionId);
+    //   session.guests.forEach((g: any) =>
+    //     g.send(JSON.stringify({ type: "event", payload }))
+    //   );
+    // }
   });
   ws.on("close", () => {
     console.log("WebSocket disconnected");

@@ -10,6 +10,6 @@
   },
   "scripts": {
     "build": "esbuild src/index.ts --bundle --minify --outfile=dist/snippet.js --format=iife",
-    "serve": "serve dist"
+    "serve": "serve dist --no-etag"
   }
 }

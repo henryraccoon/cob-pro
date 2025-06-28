@@ -2,16 +2,160 @@
   const ws = new WebSocket("ws://localhost:8080");
   const sessionId = "session1";
   const isHost = true;
+  type ElType = { id: string; type: string };
 
-  ws.onopen = () => {
-    ws.send(
-      JSON.stringify({
-        type: "register",
-        role: isHost ? "host" : "guest",
+  document.addEventListener("DOMContentLoaded", () => {
+    ws.onopen = () => {
+      console.log("WebSocket opened");
+      const cobIdArr: ElType[] = [];
+
+      if (isHost) {
+        document
+          .querySelectorAll("button, input, textarea, a, div")
+          .forEach((el, i) => {
+            const id = `cob-${i}`;
+            el.setAttribute("data-cob-id", id);
+            cobIdArr.push({ id, type: el.tagName.toLowerCase() });
+          });
+      }
+      console.log("Sending register");
+      ws.send(
+        JSON.stringify({
+          type: "register",
+          role: isHost ? "host" : "guest",
+          sessionId,
+          cobIdArr,
+        })
+      );
+    };
+  });
+
+  // if (isHost) {
+  //   document.addEventListener("", (e) => {
+  //     const data = {
+  //       type: "event",
+  //       sessionId,
+  //       payload: { action: "" },
+  //     };
+  //     ws.send(JSON.stringify(data));
+  //   });
+  // }
+
+  if (isHost) {
+    document.addEventListener("scroll", (e) => {
+      const data = {
+        type: "event",
         sessionId,
-      })
-    );
-  };
+        payload: {
+          action: "scroll",
+          target: "window",
+          scrollX: window.scrollX,
+          scrollY: window.scrollY,
+        },
+      };
+      ws.send(JSON.stringify(data));
+    });
+  }
+
+  // if (isHost) {
+  //   document.addEventListener("mousemove", (e) => {
+  //     const data = {
+  //       type: "event",
+  //       sessionId,
+  //       payload: { action: "mousemove", x: e.clientX, y: e.clientY },
+  //     };
+  //     ws.send(JSON.stringify(data));
+  //   });
+  // }
+
+  if (isHost) {
+    document.addEventListener("input", (e) => {
+      const target = e.target as HTMLInputElement;
+      const cobId = target.getAttribute("data-cob-id");
+
+      const data = {
+        type: "event",
+        sessionId,
+        payload: {
+          action: "input",
+          target: cobId,
+          value: target.value,
+        },
+      };
+      ws.send(JSON.stringify(data));
+    });
+  }
+
+  if (isHost) {
+    document.addEventListener("resize", (e) => {
+      const data = {
+        type: "event",
+        sessionId,
+        payload: {
+          action: "resize",
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+      };
+      ws.send(JSON.stringify(data));
+    });
+  }
+
+  if (isHost) {
+    document.addEventListener("select", (e) => {
+      const target = e.target as HTMLInputElement;
+      const cobId = target.getAttribute("data-cob-id");
+      const data = {
+        type: "event",
+        sessionId,
+        payload: {
+          action: "select",
+          target: cobId,
+          value: target.value,
+        },
+      };
+      ws.send(JSON.stringify(data));
+    });
+  }
+
+  if (isHost) {
+    document.addEventListener("change", (e) => {
+      const el = e.target as HTMLSelectElement;
+      const payload = {
+        action: "select",
+        target: el.getAttribute("data-cob-id"),
+        value: el.value,
+      };
+      ws.send(JSON.stringify({ type: "event", sessionId, payload }));
+    });
+  }
+
+  if (isHost) {
+    document.addEventListener("select", (e) => {
+      const input = e.target as HTMLInputElement | HTMLTextAreaElement;
+      const payload = {
+        action: "text-selection",
+        target: input.getAttribute("data-cob-id"),
+        selectionStart: input.selectionStart,
+        selectionEnd: input.selectionEnd,
+        value: input.value,
+      };
+      ws.send(JSON.stringify({ type: "event", sessionId, payload }));
+    });
+  }
+
+  if (isHost) {
+    document.addEventListener("submit", (e) => {
+      const target = e.target as HTMLInputElement;
+      const cobId = target.getAttribute("data-cob-id");
+      const data = {
+        type: "event",
+        sessionId,
+        payload: { action: "submit", target: cobId },
+      };
+      ws.send(JSON.stringify(data));
+    });
+  }
 
   if (isHost) {
     document.addEventListener("click", (e) => {

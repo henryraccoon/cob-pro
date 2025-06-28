@@ -5,6 +5,8 @@ console.log("WebSocket server started on ws://localhost:8080");
 
 const sessions = new Map(); //key: sessionId, value: {host, guests[]}
 
+type ElType = { id: string; type: string };
+
 wss.on("connection", (ws) => {
   console.log("New WebSocket connection");
 
@@ -13,9 +15,16 @@ wss.on("connection", (ws) => {
     console.log("Received message:", data);
 
     if (data.type === "register") {
-      const { role, sessionId } = data;
+      const { role, sessionId, cobIdArr = [] } = data;
+      const elements = cobIdArr.map((el: ElType) => el.type).join(", ");
       if (sessionId) sessions.set(sessionId, { host: null, guests: [] });
-      if (role === "host") console.log("Host registered. Sessions: ", sessions);
+      if (role === "host")
+        console.log(
+          "Host registered. Sessions: ",
+          sessions,
+          "Elements:",
+          elements
+        );
       if (role === "guest")
         console.log("Guest connected. Sessions: ", sessions);
 

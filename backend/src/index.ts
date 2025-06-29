@@ -12,25 +12,19 @@ wss.on("connection", (ws) => {
 
   ws.on("message", (message) => {
     const data = JSON.parse(message.toString());
-    console.log("Received message:", data);
 
+    if (data.type === "snapshot") console.log("snapshot received");
+    if (data.type === "event") console.log("event data received: ", data);
     if (data.type === "register") {
       const { role, sessionId, cobIdArr = [] } = data;
       const elements = cobIdArr.map((el: ElType) => el.type).join(", ");
       if (sessionId) sessions.set(sessionId, { host: null, guests: [] });
-      if (role === "host")
-        console.log(
-          "Host registered. Sessions: ",
-          sessions,
-          "Elements:",
-          elements
-        );
-      if (role === "guest")
-        console.log("Guest connected. Sessions: ", sessions);
-
       const session = sessions.get(sessionId);
       if (role === "host") session.host = ws;
       else session.guests.push(ws);
+      if (role === "host") console.log("Host registered.");
+      if (role === "guest")
+        console.log("Guest connected. Sessions: ", sessions);
     }
     if (data.type === "leave") {
       const { role, sessionId, time } = data;

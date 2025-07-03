@@ -4,29 +4,76 @@
   const isHost = true;
   type ElType = { id: string; type: string };
 
+  function assignCobIds() {
+    const cobIdArr: ElType[] = [];
+
+    document
+      .querySelectorAll("button, input, textarea, a, div, select")
+      .forEach((el, i) => {
+        const id = `cob-${i}`;
+        el.setAttribute("data-cob-id", id);
+        cobIdArr.push({ id, type: el.tagName.toLowerCase() });
+      });
+    ws.send(
+      JSON.stringify({
+        type: "register",
+        role: "host",
+        sessionId,
+        cobIdArr,
+      })
+    );
+
+    return cobIdArr;
+  }
+
+  function detectRouteChange(callback: () => void) {
+    const pushState = history.pushState;
+    const replaceState = history.replaceState;
+
+    history.pushState = function (...args) {
+      pushState.apply(history, args);
+      callback();
+    };
+
+    history.replaceState = function (...args) {
+      replaceState.apply(history, args);
+      callback();
+    };
+    window.addEventListener("popstate", () => callback());
+  }
+
+  if (isHost) {
+    detectRouteChange(() => {
+      setTimeout(() => {
+        assignCobIds();
+
+        const html = document.documentElement.outerHTML;
+        const payload = {
+          type: "dom-update",
+          html,
+          width: window.innerWidth,
+          height: window.innerHeight,
+          url: window.location.href,
+        };
+        ws.send(JSON.stringify({ type: "snapshot", sessionId, payload }));
+      }, 50);
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     ws.onopen = () => {
       console.log("WebSocket opened");
-      const cobIdArr: ElType[] = [];
-
       if (isHost) {
-        document
-          .querySelectorAll("button, input, textarea, a, div, select")
-          .forEach((el, i) => {
-            const id = `cob-${i}`;
-            el.setAttribute("data-cob-id", id);
-            cobIdArr.push({ id, type: el.tagName.toLowerCase() });
-          });
+        assignCobIds();
+        ws.send(
+          JSON.stringify({
+            type: "register",
+            role: isHost ? "host" : "guest",
+            sessionId,
+          })
+        );
       }
-      ws.send(
-        JSON.stringify({
-          type: "register",
-          role: isHost ? "host" : "guest",
 
-          sessionId,
-          cobIdArr,
-        })
-      );
       const html = document.documentElement.outerHTML;
       const payload = {
         type: "initial-dom",
@@ -37,6 +84,26 @@
       };
       ws.send(JSON.stringify({ type: "snapshot", sessionId, payload }));
     };
+  });
+
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      const html = document.documentElement.outerHTML;
+
+      ws.send(
+        JSON.stringify({
+          type: "snapshot",
+          sessionId,
+          payload: { type: "domMutation", action: "dom-update", html },
+        })
+      );
+    });
+  });
+
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
   });
 
   // if (isHost) {

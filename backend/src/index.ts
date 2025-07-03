@@ -14,18 +14,43 @@ wss.on("connection", (ws) => {
     const data = JSON.parse(message.toString());
 
     if (data.type === "snapshot") console.log("snapshot received");
+    if (data.type === "domMutation")
+      console.log("dom mutation. snapshot received");
     if (data.type === "event") console.log("event data received: ", data);
     if (data.type === "register") {
       const { role, sessionId, cobIdArr = [] } = data;
-      const elements = cobIdArr.map((el: ElType) => el.type).join(", ");
-      if (sessionId) sessions.set(sessionId, { host: null, guests: [] });
+
+      if (!sessions.has(sessionId)) {
+        sessions.set(sessionId, { host: null, guests: [] });
+      }
       const session = sessions.get(sessionId);
-      if (role === "host") session.host = ws;
-      else session.guests.push(ws);
-      if (role === "host") console.log("Host registered.");
-      if (role === "guest")
-        console.log("Guest connected. Sessions: ", sessions);
+
+      if (role === "host") {
+        sessions.set(sessionId, { host: ws, guests: [] });
+        console.log("Host registered.");
+      } else if (role === "guest") {
+        session.guests.push(ws);
+        console.log("Guest connected.");
+        ws.send(
+          JSON.stringify({
+            type: "host-status",
+            available: sessions.get(sessionId).host !== null,
+          })
+        );
+        console.log(
+          JSON.stringify({
+            type: "host-status",
+            available: sessions.get(sessionId).host !== null,
+          })
+        );
+      }
     }
+    //     const session = sessions.get(sessionId);
+    // session?.guests.forEach((guest) => {
+    //   if (guest.readyState === WebSocket.OPEN) {
+    //     guest.send(JSON.stringify({ type: "your-message-type", payload: "Hello guest!" }));
+    // }
+    // });
     if (data.type === "leave") {
       const { role, sessionId, time } = data;
 

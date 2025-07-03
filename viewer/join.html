@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Join Co-browsing Session</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+
+      #joinBtn {
+        padding: 10px 20px;
+        font-size: 16px;
+        margin-top: 20px;
+      }
+
+      #iframeWrapper {
+        margin-top: 20px;
+        position: relative;
+      }
+
+      #closeBtn {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        z-index: 10;
+        background: #e74c3c;
+        color: white;
+        padding: 5px 10px;
+        border: none;
+        cursor: pointer;
+      }
+
+      iframe {
+        width: 100%;
+        height: 90vh;
+        border: 1px solid #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Join Co-browsing Session</h2>
+    <button id="joinBtn" disabled>Checking host status...</button>
+
+    <div id="iframeWrapper" style="display: none">
+      <button id="closeBtn">Disconnect</button>
+      <iframe id="viewerFrame"></iframe>
+    </div>
+
+    <script src="join.js"></script>
+  </body>
+</html>

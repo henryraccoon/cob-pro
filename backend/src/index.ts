@@ -1,7 +1,10 @@
+import { hostname } from "os";
+import { json } from "stream/consumers";
 import WebSocket from "ws";
 
 const wss = new WebSocket.Server({ port: 8080 });
 console.log("WebSocket server started on ws://localhost:8080");
+let snapshot: string;
 
 const sessions = new Map(); //key: sessionId, value: {host, guests[]}
 
@@ -13,10 +16,55 @@ wss.on("connection", (ws) => {
   ws.on("message", (message) => {
     const data = JSON.parse(message.toString());
 
-    if (data.type === "snapshot") console.log("snapshot received");
+    //guest joined
+    if (data.type === "join-session") {
+      const { sessionId, guest_name } = data;
+      console.log(`Guest ${guest_name} started cobrowsing session.`);
+      const { guests } = sessions.get(sessionId);
+      if (guests.length > 0) {
+        console.log("sending guest snapshot");
+        for (const g of guests) {
+          console.log("sent now");
+          g.send(snapshot);
+        }
+      }
+    }
+    if (data.type === "snapshot") {
+      // receiving snapshot and sending to guests
+      console.log("snapshot received");
+      const { sessionId } = data;
+      const { html, width, height, url } = data.payload;
+
+      const { host, guests } = sessions.get(sessionId);
+
+      snapshot = JSON.stringify({
+        type: "snapshot",
+        sessionId,
+        html,
+        width,
+        height,
+        url,
+      });
+
+      console.log("sending snapshot...");
+      if (guests.length > 0) {
+        console.log("sending guest snapshot");
+        for (const g of guests) {
+          console.log("sent now");
+          g.send(snapshot);
+          console.log("sent.");
+        }
+      }
+    }
+
+    // replicating dom mutations
     if (data.type === "domMutation")
       console.log("dom mutation. snapshot received");
+
+    // replicating event
     if (data.type === "event") console.log("event data received: ", data);
+
+    // registering host and guest
     if (data.type === "register") {
       const { role, sessionId, cobIdArr = [] } = data;
 
@@ -26,23 +74,27 @@ wss.on("connection", (ws) => {
       const session = sessions.get(sessionId);
 
       if (role === "host") {
-        sessions.set(sessionId, { host: ws, guests: [] });
+        if (!sessions.has(sessionId)) {
+          sessions.set(sessionId, { host: null, guests: [] });
+        }
+        session.host = ws;
         console.log("Host registered.");
       } else if (role === "guest") {
         session.guests.push(ws);
         console.log("Guest connected.");
+        // console.log("added guest", session.guests);
         ws.send(
           JSON.stringify({
             type: "host-status",
             available: sessions.get(sessionId).host !== null,
           })
         );
-        console.log(
-          JSON.stringify({
-            type: "host-status",
-            available: sessions.get(sessionId).host !== null,
-          })
-        );
+        // console.log(
+        //   JSON.stringify({
+        //     type: "host-status",
+        //     available: sessions.get(sessionId).host !== null,
+        //   })
+        // );
       }
     }
     //     const session = sessions.get(sessionId);
@@ -52,18 +104,21 @@ wss.on("connection", (ws) => {
     // }
     // });
     if (data.type === "leave") {
-      const { role, sessionId, time } = data;
+      const { role, sessionId } = data;
 
       if (role === "host") {
         console.log(
-          `Host closed the window. Session ${sessionId} has ended at ${time}.`
+          `Host closed the window. Session ${sessionId} has ended at ${new Date().toLocaleTimeString()}.`
         );
         if (sessions.has(sessionId)) {
           sessions.delete(sessionId);
         }
       }
 
-      if (role === "guest") console.log(`Guest disconnected at ${time}.`);
+      if (role === "guest")
+        console.log(
+          `Guest disconnected at ${new Date().toLocaleTimeString()}.`
+        );
     }
 
     // if (data.type === "event") {

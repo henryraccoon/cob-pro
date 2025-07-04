@@ -33,7 +33,8 @@ ws.onmessage = (msg) => {
   // Mirror events here later, e.g. DOM snapshots
   if (data.type === "snapshot" && viewerFrame.contentWindow) {
     viewerFrame.contentWindow.document.open();
-    viewerFrame.contentWindow.document.write(data.payload.html);
+    viewerFrame.contentWindow.document.write(data.html);
+
     viewerFrame.contentWindow.document.close();
   }
 
@@ -46,7 +47,14 @@ joinBtn.addEventListener("click", () => {
   if (!hostAvailable) return;
 
   // Ask server to start syncing with host
-  ws.send(JSON.stringify({ type: "join-session", role: "guest", sessionId }));
+  ws.send(
+    JSON.stringify({
+      type: "join-session",
+      role: "guest",
+      sessionId,
+      guest_name: "Eric",
+    })
+  );
 
   // Show iframe
   iframeWrapper.style.display = "block";

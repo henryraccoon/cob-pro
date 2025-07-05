@@ -58,7 +58,21 @@ wss.on("connection", (ws) => {
       console.log("dom mutation. snapshot received");
 
     // replicating event
-    if (data.type === "event") console.log("event data received: ", data);
+    if (data.type === "event") {
+      const { sessionId, payload } = data;
+
+      if (payload.action === "scroll") {
+        const { host, guests } = sessions.get(sessionId);
+        if (guests.length > 0) {
+          console.log("sending guest scroll data");
+          for (const g of guests) {
+            g.send(JSON.stringify(data));
+          }
+        }
+      }
+
+      console.log("event data received: ", data);
+    }
 
     // registering host and guest
     if (data.type === "register") {

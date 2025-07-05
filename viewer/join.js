@@ -41,8 +41,19 @@ ws.onmessage = (msg) => {
     viewerFrame.contentWindow.document.close();
   }
 
-  if (data.type === "event") {
-    // Future: replay scroll, input, etc.
+  if (data.type === "event" && data.payload.action === "scroll") {
+    const { scrollX, scrollY } = data.payload;
+
+    if (viewerFrame && viewerFrame.contentWindow) {
+      viewerFrame.contentDocument.documentElement.scrollTo(scrollX, scrollY);
+      viewerFrame.contentDocument.body?.scrollTo(scrollX, scrollY);
+    }
+
+    // const iframeDoc = viewerFrame?.contentWindow.document;
+    // if (iframeDoc) {
+    //   iframeDoc.documentElement.scrollTo(scrollX, scrollY);
+    //   iframeDoc.scrollTo(scrollX, scrollY);
+    // }
   }
 };
 

@@ -20,13 +20,9 @@ wss.on("connection", (ws) => {
     if (data.type === "join-session") {
       const { sessionId, guest_name } = data;
       console.log(`Guest ${guest_name} started cobrowsing session.`);
-      const { guests } = sessions.get(sessionId);
-      if (guests.length > 0) {
+      if (snapshot) {
         console.log("sending guest snapshot");
-        for (const g of guests) {
-          console.log("sent now");
-          g.send(snapshot);
-        }
+        ws.send(snapshot);
       }
     }
     if (data.type === "snapshot") {
@@ -132,6 +128,14 @@ wss.on("connection", (ws) => {
   });
   ws.on("close", () => {
     console.log("WebSocket disconnected");
+    for (const [sessionId, session] of sessions.entries()) {
+      session.guests = session.guests.filter((g: WebSocket) => g !== ws);
+      if (session.host === ws) {
+        console.log(`Host of session ${sessionId} disconnected`);
+        sessions.delete(sessionId);
+      }
+    }
+
     // (Optional) Clean up sessions here if needed
   });
 

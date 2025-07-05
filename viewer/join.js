@@ -30,10 +30,13 @@ ws.onmessage = (msg) => {
     }
   }
 
-  // Mirror events here later, e.g. DOM snapshots
   if (data.type === "snapshot" && viewerFrame.contentWindow) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(data.html, "text/html");
+    doc.querySelectorAll("script").forEach((script) => script.remove());
+
     viewerFrame.contentWindow.document.open();
-    viewerFrame.contentWindow.document.write(data.html);
+    viewerFrame.contentWindow.document.write(doc.documentElement.outerHTML);
 
     viewerFrame.contentWindow.document.close();
   }

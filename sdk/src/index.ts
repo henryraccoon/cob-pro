@@ -60,6 +60,8 @@
     });
   }
 
+  let registered = false;
+
   document.addEventListener("DOMContentLoaded", () => {
     ws.onopen = () => {
       console.log("WebSocket opened");
@@ -68,10 +70,11 @@
         ws.send(
           JSON.stringify({
             type: "register",
-            role: isHost ? "host" : "guest",
+            role: "host",
             sessionId,
           })
         );
+        registered = true;
       }
 
       const html = document.documentElement.outerHTML;

@@ -41,12 +41,36 @@ ws.onmessage = (msg) => {
     viewerFrame.contentWindow.document.close();
   }
 
-  if (data.type === "event" && data.payload.action === "scroll") {
-    const { scrollX, scrollY } = data.payload;
+  if (data.type === "event") {
+    if (data.payload.action === "scroll") {
+      const { scrollX, scrollY } = data.payload;
 
-    if (viewerFrame && viewerFrame.contentWindow) {
-      viewerFrame.contentDocument.documentElement.scrollTo(scrollX, scrollY);
-      viewerFrame.contentDocument.body?.scrollTo(scrollX, scrollY);
+      if (viewerFrame && viewerFrame.contentWindow) {
+        viewerFrame.contentDocument.documentElement.scrollTo(scrollX, scrollY);
+        viewerFrame.contentDocument.body?.scrollTo(scrollX, scrollY);
+      }
+    }
+
+    if (data.payload.action === "select") {
+      console.log("received select data");
+      const { target, value } = data.payload;
+      console.log("target: ", target);
+      console.log("value: ", value);
+
+      if (viewerFrame && viewerFrame.contentDocument) {
+        const el = viewerFrame.contentDocument.querySelector(
+          `[data-cob-id="${target}"]`
+        );
+        console.log(el);
+        if (el && el.type === "select") {
+          el.value = value;
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        if ((el && el.type === "checkbox") || el.type === "radio") {
+          el.checked = true;
+        }
+      }
     }
 
     // const iframeDoc = viewerFrame?.contentWindow.document;

@@ -75,39 +75,47 @@
           })
         );
         registered = true;
-      }
+        console.log(
+          "First input after assignCobIds:",
+          document.querySelector("input")?.outerHTML
+        );
 
-      const html = document.documentElement.outerHTML;
-      const payload = {
-        type: "initial-dom",
-        html,
-        width: window.innerWidth,
-        height: window.innerHeight,
-        url: window.location.href,
-      };
-      ws.send(JSON.stringify({ type: "snapshot", sessionId, payload }));
+        requestAnimationFrame(() => {
+          const html = document.documentElement.outerHTML;
+          const payload = {
+            type: "initial-dom",
+            html,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            url: window.location.href,
+          };
+          ws.send(JSON.stringify({ type: "snapshot", sessionId, payload }));
+        });
+      }
     };
   });
 
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      const html = document.documentElement.outerHTML;
+  // const observer = new MutationObserver((mutations) => {
+  //   mutations.forEach((mutation) => {
+  //     requestAnimationFrame(() => {
+  //       const html = document.documentElement.outerHTML;
 
-      ws.send(
-        JSON.stringify({
-          type: "snapshot",
-          sessionId,
-          payload: { type: "domMutation", action: "dom-update", html },
-        })
-      );
-    });
-  });
+  //       ws.send(
+  //         JSON.stringify({
+  //           type: "snapshot",
+  //           sessionId,
+  //           payload: { type: "domMutation", action: "dom-update", html },
+  //         })
+  //       );
+  //     });
+  //   });
+  // });
 
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-  });
+  // observer.observe(document.documentElement, {
+  //   childList: true,
+  //   subtree: true,
+  //   attributes: true,
+  // });
 
   // if (isHost) {
   //   document.addEventListener("", (e) => {

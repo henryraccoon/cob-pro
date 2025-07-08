@@ -61,10 +61,10 @@ wss.on("connection", (ws) => {
     if (data.type === "event") {
       const { sessionId, payload } = data;
 
-      if (payload.action === "scroll") {
+      if (payload.action === "scroll" || payload.action === "select") {
         const { host, guests } = sessions.get(sessionId);
         if (guests.length > 0) {
-          console.log("sending guest scroll data");
+          console.log(`sending guest event data (${payload.action})`);
           for (const g of guests) {
             g.send(JSON.stringify(data));
           }

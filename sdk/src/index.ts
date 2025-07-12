@@ -173,6 +173,57 @@
     });
   }
 
+  document.querySelectorAll("select").forEach((select) => {
+    const cobId = select.getAttribute("data-cob-id");
+
+    select.addEventListener("focus", () => {
+      ws.send(
+        JSON.stringify({
+          type: "event",
+          sessionId,
+          payload: { action: "select-open", target: cobId },
+        })
+      );
+    });
+  });
+
+  document.addEventListener("focusin", (e) => {
+    const el = e.target as HTMLElement;
+    if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+      const cobId = el.getAttribute("data-cob-id");
+      if (cobId) {
+        ws.send(
+          JSON.stringify({
+            type: "event",
+            sessionId,
+            payload: {
+              action: "focus",
+              target: cobId,
+            },
+          })
+        );
+      }
+    }
+  });
+
+  document.addEventListener("input", (e) => {
+    const el = e.target as HTMLInputElement;
+    const cobId = el.getAttribute("data-cob-id");
+    if (cobId) {
+      ws.send(
+        JSON.stringify({
+          type: "event",
+          sessionId,
+          payload: {
+            action: "input",
+            target: cobId,
+            value: el.value,
+          },
+        })
+      );
+    }
+  });
+
   if (isHost) {
     window.addEventListener("resize", () => {
       const data = {

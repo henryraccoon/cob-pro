@@ -61,7 +61,13 @@ wss.on("connection", (ws) => {
     if (data.type === "event") {
       const { sessionId, payload } = data;
 
-      if (payload.action === "scroll" || payload.action === "select") {
+      if (
+        payload.action === "scroll" ||
+        payload.action === "select" ||
+        payload.action === "select-open" ||
+        payload.action === "input" ||
+        payload.action === "focus"
+      ) {
         const { host, guests } = sessions.get(sessionId);
         if (guests.length > 0) {
           console.log(`sending guest event data (${payload.action})`);

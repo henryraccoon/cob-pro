@@ -68,6 +68,16 @@ export default function QuestionForm() {
       </div>
 
       <div>
+        <label
+          htmlFor="inputfield"
+          className="block mb-2 font-semibold text-gray-700"
+        >
+          Comment:
+        </label>
+        <input className="bg-gray-200 rounded border border-gray-300 outline-amber-300"></input>
+      </div>
+
+      <div>
         <a
           href="https://www.google.com"
           target="_blank"

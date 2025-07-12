@@ -51,6 +51,42 @@ ws.onmessage = (msg) => {
       }
     }
 
+    if (data.payload.action === "select-open") {
+      const el = viewerFrame.contentWindow.document.querySelector(
+        `[data-cob-id="${payload.target}"]`
+      );
+      if (el && el.tagName === "SELECT") {
+        el.focus();
+      }
+    }
+
+    if (data.payload.action === "focus") {
+      console.log("focus event");
+      console.log(data.payload);
+
+      const el = viewerFrame.contentWindow.document.querySelector(
+        `[data-cob-id="${data.payload.target}"]`
+      );
+      console.log(el);
+      if (!el) return;
+      viewerFrame.focus();
+      el.focus();
+      el.dispatchEvent(new Event("focus", { bubbles: true }));
+    }
+
+    if (data.payload.action === "input") {
+      const { action, target, value } = data.payload;
+
+      const el = viewerFrame.contentWindow.document.querySelector(
+        `[data-cob-id="${target}"]`
+      );
+
+      if (!el) return;
+      el.value = value;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
     if (data.payload.action === "select") {
       console.log("received select data");
       const { target, value } = data.payload;

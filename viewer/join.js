@@ -8,6 +8,36 @@ const closeBtn = document.getElementById("closeBtn");
 
 let hostAvailable = false;
 
+function showClickMarker(x, y, document) {
+  const scrollX =
+    document.documentElement.scrollLeft || document.body.scrollLeft;
+  const scrollY = document.documentElement.scrollTop || document.body.scrollTop;
+
+  const marker = document.createElement("div");
+  marker.style.position = "absolute";
+  marker.style.left = `${x + scrollX}px`; // adjust X
+  marker.style.top = `${y + scrollY}px`; // adjust Y
+  marker.style.width = "20px";
+  marker.style.height = "20px";
+  marker.style.background = "rgba(255, 0, 0, 0.5)";
+  marker.style.border = "2px solid red";
+  marker.style.borderRadius = "50%";
+  marker.style.pointerEvents = "none";
+  marker.style.transform = "translate(-50%, -50%)";
+  marker.style.zIndex = "9999";
+  marker.style.transition = "opacity 0.4s ease-out";
+
+  document.body.appendChild(marker);
+
+  requestAnimationFrame(() => {
+    marker.style.opacity = "0";
+  });
+
+  setTimeout(() => {
+    marker.remove();
+  }, 400);
+}
+
 ws.onopen = () => {
   // Ask the server if host is available
   ws.send(JSON.stringify({ type: "register", role: "guest", sessionId }));
@@ -39,6 +69,16 @@ ws.onmessage = (msg) => {
     viewerFrame.contentWindow.document.write(doc.documentElement.outerHTML);
 
     viewerFrame.contentWindow.document.close();
+
+    // TODO: remove when figure out why click doesn't show before input
+    const dummyInput = viewerFrame.contentDocument.createElement("input");
+    dummyInput.style.position = "absolute";
+    dummyInput.style.opacity = "0";
+    viewerFrame.contentDocument.body.appendChild(dummyInput);
+    dummyInput.focus();
+    dummyInput.remove();
+
+    viewerFrame.contentWindow.focus();
   }
 
   if (data.type === "event") {
@@ -48,6 +88,26 @@ ws.onmessage = (msg) => {
       if (viewerFrame && viewerFrame.contentWindow) {
         viewerFrame.contentDocument.documentElement.scrollTo(scrollX, scrollY);
         viewerFrame.contentDocument.body?.scrollTo(scrollX, scrollY);
+      }
+    }
+
+    if (data.payload.action === "resize") {
+      const { height, width } = data.payload;
+
+      if (viewerFrame && viewerFrame.contentWindow) {
+        viewerFrame.style.width = `${width}px`;
+        viewerFrame.style.height = `${height}px`;
+      }
+    }
+
+    if (data.payload.action === "click") {
+      const { x, y } = data.payload;
+
+      console.log("received coords");
+      if (viewerFrame) {
+        viewerFrame.focus();
+        console.log("setting click animation");
+        showClickMarker(x, y, viewerFrame.contentDocument);
       }
     }
 
@@ -67,7 +127,6 @@ ws.onmessage = (msg) => {
       const el = viewerFrame.contentWindow.document.querySelector(
         `[data-cob-id="${data.payload.target}"]`
       );
-      console.log(el);
       if (!el) return;
       viewerFrame.focus();
       el.focus();
@@ -97,7 +156,6 @@ ws.onmessage = (msg) => {
         const el = viewerFrame.contentDocument.querySelector(
           `[data-cob-id="${target}"]`
         );
-        console.log(el);
         if (el && el.type === "select") {
           el.value = value;
           el.dispatchEvent(new Event("input", { bubbles: true }));

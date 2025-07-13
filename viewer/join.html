@@ -17,6 +17,12 @@
       #iframeWrapper {
         margin-top: 20px;
         position: relative;
+        overflow: auto;
+      }
+
+      #viewerFrame {
+        display: block;
+        border: none;
       }
 
       #closeBtn {
@@ -44,7 +50,7 @@
 
     <div id="iframeWrapper" style="display: none">
       <button id="closeBtn">Disconnect</button>
-      <iframe id="viewerFrame" tabindex="-1"></iframe>
+      <iframe id="viewerFrame" allow="scripts"></iframe>
     </div>
 
     <script src="join.js"></script>

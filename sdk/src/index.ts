@@ -85,11 +85,19 @@
           const payload = {
             type: "initial-dom",
             html,
-            width: window.innerWidth,
-            height: window.innerHeight,
             url: window.location.href,
           };
           ws.send(JSON.stringify({ type: "snapshot", sessionId, payload }));
+          const data = {
+            type: "event",
+            sessionId,
+            payload: {
+              action: "resize",
+              width: window.innerWidth,
+              height: window.innerHeight,
+            },
+          };
+          ws.send(JSON.stringify(data));
         });
       }
     };

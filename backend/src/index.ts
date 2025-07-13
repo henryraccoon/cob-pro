@@ -63,10 +63,13 @@ wss.on("connection", (ws) => {
 
       if (
         payload.action === "scroll" ||
+        payload.action === "resize" ||
         payload.action === "select" ||
         payload.action === "select-open" ||
         payload.action === "input" ||
-        payload.action === "focus"
+        payload.action === "focus" ||
+        payload.action === "click" ||
+        payload.action === "mousemove"
       ) {
         const { host, guests } = sessions.get(sessionId);
         if (guests.length > 0) {

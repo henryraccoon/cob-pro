@@ -38,6 +38,63 @@ function showClickMarker(x, y, document) {
   }, 400);
 }
 
+function showCursor(x, y, document) {
+  const scrollX =
+    document.documentElement.scrollLeft || document.body.scrollLeft;
+  const scrollY = document.documentElement.scrollTop || document.body.scrollTop;
+
+  // Remove previous cursor if exists
+  const existingCursor = document.getElementById("hostCursor");
+  if (existingCursor) existingCursor.remove();
+
+  // Create wrapper div
+  const cursorWrapper = document.createElement("div");
+  cursorWrapper.id = "hostCursor";
+  cursorWrapper.style.position = "absolute";
+  cursorWrapper.style.left = `${x + scrollX}px`;
+  cursorWrapper.style.top = `${y + scrollY}px`;
+  cursorWrapper.style.pointerEvents = "none";
+  cursorWrapper.style.zIndex = "9999";
+  cursorWrapper.style.transform = "translate(-10%, -10%)";
+
+  // Use a simple SVG arrow that looks like a cursor
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="24" viewBox="0 0 24 36">
+    <path d="M2,1 L22,18 L14,18 L18,35 L10,35 L6,18 L2,18 Z" fill="white" stroke="red" stroke-width="1.5"/>
+  </svg>
+`;
+
+  const encodedSvg = `data:image/svg+xml;base64,${btoa(svg)}`;
+
+  // Add cursor image
+  const cursorImg = document.createElement("img");
+  cursorImg.src = encodedSvg;
+  cursorImg.style.width = "16px";
+  cursorImg.style.height = "24px";
+  cursorImg.style.display = "block";
+  cursorImg.style.userSelect = "none";
+
+  // Add label
+  const label = document.createElement("div");
+  label.textContent = "Host";
+  label.style.position = "absolute";
+  label.style.top = "40px";
+  label.style.left = "0px";
+  label.style.fontSize = "12px";
+  label.style.color = "red";
+  label.style.background = "white";
+  label.style.border = "1px solid red";
+  label.style.borderRadius = "4px";
+  label.style.padding = "2px 4px";
+  label.style.fontFamily = "sans-serif";
+  label.style.whiteSpace = "nowrap";
+
+  cursorWrapper.appendChild(cursorImg);
+  cursorWrapper.appendChild(label);
+
+  document.body.appendChild(cursorWrapper);
+}
+
 ws.onopen = () => {
   // Ask the server if host is available
   ws.send(JSON.stringify({ type: "register", role: "guest", sessionId }));
@@ -108,6 +165,15 @@ ws.onmessage = (msg) => {
         viewerFrame.focus();
         console.log("setting click animation");
         showClickMarker(x, y, viewerFrame.contentDocument);
+      }
+    }
+
+    if (data.payload.action === "mousemove") {
+      const { x, y } = data.payload;
+
+      if (viewerFrame) {
+        viewerFrame.focus();
+        showCursor(x, y, viewerFrame.contentDocument);
       }
     }
 

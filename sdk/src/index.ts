@@ -152,16 +152,16 @@
     });
   }
 
-  // if (isHost) {
-  //   document.addEventListener("mousemove", (e) => {
-  //     const data = {
-  //       type: "event",
-  //       sessionId,
-  //       payload: { action: "mousemove", x: e.clientX, y: e.clientY },
-  //     };
-  //     ws.send(JSON.stringify(data));
-  //   });
-  // }
+  if (isHost) {
+    document.addEventListener("mousemove", (e) => {
+      const data = {
+        type: "event",
+        sessionId,
+        payload: { action: "mousemove", x: e.clientX, y: e.clientY },
+      };
+      ws.send(JSON.stringify(data));
+    });
+  }
 
   if (isHost) {
     document.addEventListener("input", (e) => {

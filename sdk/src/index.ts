@@ -4,6 +4,8 @@
   const isHost = true;
   type ElType = { id: string; type: string };
 
+  let registered = false;
+
   function assignCobIds() {
     const cobIdArr: ElType[] = [];
 
@@ -42,25 +44,21 @@
     window.addEventListener("popstate", () => callback());
   }
 
-  if (isHost) {
-    detectRouteChange(() => {
-      setTimeout(() => {
-        assignCobIds();
+  detectRouteChange(() => {
+    setTimeout(() => {
+      assignCobIds();
 
-        const html = document.documentElement.outerHTML;
-        const payload = {
-          type: "dom-update",
-          html,
-          width: window.innerWidth,
-          height: window.innerHeight,
-          url: window.location.href,
-        };
-        ws.send(JSON.stringify({ type: "snapshot", sessionId, payload }));
-      }, 50);
-    });
-  }
-
-  let registered = false;
+      const html = document.documentElement.outerHTML;
+      const payload = {
+        type: "dom-update",
+        html,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        url: window.location.href,
+      };
+      ws.send(JSON.stringify({ type: "snapshot", sessionId, payload }));
+    }, 50);
+  });
 
   document.addEventListener("DOMContentLoaded", () => {
     ws.onopen = () => {
@@ -75,68 +73,36 @@
           })
         );
         registered = true;
-        console.log(
-          "First input after assignCobIds:",
-          document.querySelector("input")?.outerHTML
-        );
 
         requestAnimationFrame(() => {
           const html = document.documentElement.outerHTML;
           const payload = {
-            type: "initial-dom",
+            type: "dom",
             html,
             url: window.location.href,
+            width: window.innerWidth,
+            height: window.innerHeight,
           };
           ws.send(JSON.stringify({ type: "snapshot", sessionId, payload }));
-          const data = {
-            type: "event",
-            sessionId,
-            payload: {
-              action: "resize",
-              width: window.innerWidth,
-              height: window.innerHeight,
-            },
-          };
-          ws.send(JSON.stringify(data));
         });
       }
     };
   });
 
-  // const observer = new MutationObserver((mutations) => {
-  //   mutations.forEach((mutation) => {
-  //     requestAnimationFrame(() => {
-  //       const html = document.documentElement.outerHTML;
+  if (isHost && registered) {
+    window.addEventListener("resize", () => {
+      const data = {
+        type: "event",
+        sessionId,
+        payload: {
+          action: "resize",
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+      };
+      ws.send(JSON.stringify(data));
+    });
 
-  //       ws.send(
-  //         JSON.stringify({
-  //           type: "snapshot",
-  //           sessionId,
-  //           payload: { type: "domMutation", action: "dom-update", html },
-  //         })
-  //       );
-  //     });
-  //   });
-  // });
-
-  // observer.observe(document.documentElement, {
-  //   childList: true,
-  //   subtree: true,
-  //   attributes: true,
-  // });
-
-  // if (isHost) {
-  //   document.addEventListener("", (e) => {
-  //     const data = {
-  //       type: "event",
-  //       sessionId,
-  //       payload: { action: "" },
-  //     };
-  //     ws.send(JSON.stringify(data));
-  //   });
-  // }
-
-  if (isHost) {
     document.addEventListener("scroll", (e) => {
       const data = {
         type: "event",
@@ -144,15 +110,14 @@
         payload: {
           action: "scroll",
           target: "window",
+          //possibly target might be different, dropdown etc
           scrollX: window.scrollX,
           scrollY: window.scrollY,
         },
       };
       ws.send(JSON.stringify(data));
     });
-  }
 
-  if (isHost) {
     document.addEventListener("mousemove", (e) => {
       const data = {
         type: "event",
@@ -161,9 +126,7 @@
       };
       ws.send(JSON.stringify(data));
     });
-  }
 
-  if (isHost) {
     document.addEventListener("input", (e) => {
       const target = e.target as HTMLInputElement;
       const cobId = target.getAttribute("data-cob-id");
@@ -179,75 +142,7 @@
       };
       ws.send(JSON.stringify(data));
     });
-  }
 
-  document.querySelectorAll("select").forEach((select) => {
-    const cobId = select.getAttribute("data-cob-id");
-
-    select.addEventListener("focus", () => {
-      ws.send(
-        JSON.stringify({
-          type: "event",
-          sessionId,
-          payload: { action: "select-open", target: cobId },
-        })
-      );
-    });
-  });
-
-  document.addEventListener("focusin", (e) => {
-    const el = e.target as HTMLElement;
-    if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
-      const cobId = el.getAttribute("data-cob-id");
-      if (cobId) {
-        ws.send(
-          JSON.stringify({
-            type: "event",
-            sessionId,
-            payload: {
-              action: "focus",
-              target: cobId,
-            },
-          })
-        );
-      }
-    }
-  });
-
-  document.addEventListener("input", (e) => {
-    const el = e.target as HTMLInputElement;
-    const cobId = el.getAttribute("data-cob-id");
-    if (cobId) {
-      ws.send(
-        JSON.stringify({
-          type: "event",
-          sessionId,
-          payload: {
-            action: "input",
-            target: cobId,
-            value: el.value,
-          },
-        })
-      );
-    }
-  });
-
-  if (isHost) {
-    window.addEventListener("resize", () => {
-      const data = {
-        type: "event",
-        sessionId,
-        payload: {
-          action: "resize",
-          width: window.innerWidth,
-          height: window.innerHeight,
-        },
-      };
-      ws.send(JSON.stringify(data));
-    });
-  }
-
-  if (isHost) {
     document.querySelectorAll("select").forEach((select) => {
       select.addEventListener("change", (e) => {
         const target = e.target as HTMLSelectElement;
@@ -263,9 +158,7 @@
         ws.send(JSON.stringify({ type: "event", sessionId, payload }));
       });
     });
-  }
 
-  if (isHost) {
     document.addEventListener("change", (e) => {
       const el = e.target as HTMLSelectElement;
       const payload = {
@@ -275,25 +168,30 @@
       };
       ws.send(JSON.stringify({ type: "event", sessionId, payload }));
     });
-  }
 
-  if (isHost) {
-    document.querySelectorAll("input, textarea").forEach((el) => {
-      el.addEventListener("select", (e) => {
-        const input = e.target as HTMLInputElement | HTMLTextAreaElement;
+    document.addEventListener("click", (e) => {
+      const data = {
+        type: "event",
+        sessionId,
+        payload: { action: "click", x: e.clientX, y: e.clientY },
+      };
+      ws.send(JSON.stringify(data));
+    });
+
+    document.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest("a") as HTMLAnchorElement;
+      if (anchor && anchor.href) {
         const payload = {
-          action: "text-selection",
-          target: input.getAttribute("data-cob-id"),
-          selectionStart: input.selectionStart,
-          selectionEnd: input.selectionEnd,
-          value: input.value,
+          action: "link-click",
+          href: anchor.href,
+          target: anchor.getAttribute("data-cob-id") || null,
         };
         ws.send(JSON.stringify({ type: "event", sessionId, payload }));
-      });
+      }
     });
-  }
 
-  if (isHost) {
+    //should add values that are breing submitted
     document.addEventListener("submit", (e) => {
       const target = e.target as HTMLInputElement;
       const cobId = target.getAttribute("data-cob-id");
@@ -306,29 +204,56 @@
     });
   }
 
-  if (isHost) {
-    document.addEventListener("click", (e) => {
-      const data = {
-        type: "event",
-        sessionId,
-        payload: { action: "click", x: e.clientX, y: e.clientY },
-      };
-      ws.send(JSON.stringify(data));
-    });
-  }
+  //not sure if this works
+  // document.querySelectorAll("select").forEach((select) => {
+  //   const cobId = select.getAttribute("data-cob-id");
 
-  document.addEventListener("click", (e) => {
-    const target = e.target as HTMLElement;
-    const anchor = target.closest("a") as HTMLAnchorElement;
-    if (anchor && anchor.href) {
-      const payload = {
-        action: "link-click",
-        href: anchor.href,
-        target: anchor.getAttribute("data-cob-id") || null,
-      };
-      ws.send(JSON.stringify({ type: "event", sessionId, payload }));
-    }
-  });
+  //   select.addEventListener("focus", () => {
+  //     ws.send(
+  //       JSON.stringify({
+  //         type: "event",
+  //         sessionId,
+  //         payload: { action: "select-open", target: cobId },
+  //       })
+  //     );
+  //   });
+  // });
+
+  // document.addEventListener("focusin", (e) => {
+  //   const el = e.target as HTMLElement;
+  //   if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+  //     const cobId = el.getAttribute("data-cob-id");
+  //     if (cobId) {
+  //       ws.send(
+  //         JSON.stringify({
+  //           type: "event",
+  //           sessionId,
+  //           payload: {
+  //             action: "focus",
+  //             target: cobId,
+  //           },
+  //         })
+  //       );
+  //     }
+  //   }
+  // });
+
+  // TODO
+  // if (isHost) {
+  //   document.querySelectorAll("input, textarea").forEach((el) => {
+  //     el.addEventListener("select", (e) => {
+  //       const input = e.target as HTMLInputElement | HTMLTextAreaElement;
+  //       const payload = {
+  //         action: "text-selection",
+  //         target: input.getAttribute("data-cob-id"),
+  //         selectionStart: input.selectionStart,
+  //         selectionEnd: input.selectionEnd,
+  //         value: input.value,
+  //       };
+  //       ws.send(JSON.stringify({ type: "event", sessionId, payload }));
+  //     });
+  //   });
+  // }
 
   window.addEventListener("beforeunload", () => {
     ws.send(
@@ -339,6 +264,7 @@
         time: new Date().toLocaleTimeString(),
       })
     );
+    registered = false;
     ws.close();
   });
 
@@ -350,16 +276,6 @@
         time: new Date().toLocaleTimeString(),
       })
     );
+    registered = false;
   };
-  // } else {
-  //   ws.onmessage = (msg) => {
-  //     const { type, payload } = JSON.parse(msg.data);
-  //     if (type === "event" && payload.action === "click") {
-  //       const fake = document.createElement("div");
-  //       fake.style = `position:fixed; top:${payload.y}px; left:${payload.x}px; width:10px; height:10px; background:red; z-index:9999;`;
-  //       document.body.appendChild(fake);
-  //       setTimeout(() => fake.remove(), 500);
-  //     }
-  //   };
-  // }
 })();

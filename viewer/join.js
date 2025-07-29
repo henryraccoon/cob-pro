@@ -97,7 +97,9 @@ function showCursor(x, y, document) {
 
 ws.onopen = () => {
   // Ask the server if host is available
-  ws.send(JSON.stringify({ type: "register", role: "guest", sessionId }));
+  ws.send(
+    JSON.stringify({ type: "register", role: "guest", name: "Eric", sessionId })
+  );
 };
 
 ws.onmessage = (msg) => {
@@ -261,5 +263,7 @@ joinBtn.addEventListener("click", () => {
 closeBtn.addEventListener("click", () => {
   iframeWrapper.style.display = "none";
   viewerFrame.srcdoc = "";
-  ws.send(JSON.stringify({ type: "leave", sessionId, role: "guest" }));
+  ws.send(
+    JSON.stringify({ type: "leave", sessionId, role: "guest", name: "Eric" })
+  );
 });

@@ -9,6 +9,7 @@ let snapshot: string;
 const sessions = new Map(); //key: sessionId, value: {host, guests[]}
 
 type ElType = { id: string; type: string };
+type GuestType = { socket: WebSocket; name: string };
 
 wss.on("connection", (ws) => {
   console.log("New WebSocket connection");
@@ -16,9 +17,16 @@ wss.on("connection", (ws) => {
   ws.on("message", (message) => {
     const data = JSON.parse(message.toString());
 
-    //guest joined
     if (data.type === "join-session") {
       const { sessionId, guest_name } = data;
+      const currentSession = sessions.get(sessionId);
+
+      const updatedGuests = currentSession?.guests || [];
+      updatedGuests.push({ socket: ws, name: guest_name });
+      sessions.set(sessionId, {
+        ...currentSession,
+        guests: updatedGuests,
+      });
       console.log(`Guest ${guest_name} started cobrowsing session.`);
       if (snapshot) {
         console.log("sending guest snapshot");
@@ -26,7 +34,6 @@ wss.on("connection", (ws) => {
       }
     }
     if (data.type === "snapshot") {
-      // receiving snapshot and sending to guests
       console.log("snapshot received");
       const { sessionId } = data;
       const { html, width, height, url } = data.payload;
@@ -42,20 +49,12 @@ wss.on("connection", (ws) => {
         url,
       });
 
-      console.log("sending snapshot...");
       if (guests.length > 0) {
-        console.log("sending guest snapshot");
         for (const g of guests) {
-          console.log("sent now");
-          g.send(snapshot);
-          console.log("sent.");
+          g.socket.send(snapshot);
         }
       }
     }
-
-    // replicating dom mutations
-    if (data.type === "domMutation")
-      console.log("dom mutation. snapshot received");
 
     // replicating event
     if (data.type === "event") {
@@ -75,17 +74,14 @@ wss.on("connection", (ws) => {
         if (guests.length > 0) {
           console.log(`sending guest event data (${payload.action})`);
           for (const g of guests) {
-            g.send(JSON.stringify(data));
+            g.socket.send(JSON.stringify(data));
           }
         }
       }
-
-      console.log("event data received: ", data);
     }
 
-    // registering host and guest
     if (data.type === "register") {
-      const { role, sessionId, cobIdArr = [] } = data;
+      const { role, sessionId, name, cobIdArr = [] } = data;
 
       if (!sessions.has(sessionId)) {
         sessions.set(sessionId, { host: null, guests: [] });
@@ -93,35 +89,20 @@ wss.on("connection", (ws) => {
       const session = sessions.get(sessionId);
 
       if (role === "host") {
-        if (!sessions.has(sessionId)) {
-          sessions.set(sessionId, { host: null, guests: [] });
-        }
-        session.host = ws;
+        session.host = { socket: ws, name: data.name };
         console.log("Host registered.");
       } else if (role === "guest") {
-        session.guests.push(ws);
+        session.guests.push({ socket: ws, name: data.name });
         console.log("Guest connected.");
-        // console.log("added guest", session.guests);
         ws.send(
           JSON.stringify({
             type: "host-status",
-            available: sessions.get(sessionId).host !== null,
+            available: sessions.get(sessionId).host.name !== null,
           })
         );
-        // console.log(
-        //   JSON.stringify({
-        //     type: "host-status",
-        //     available: sessions.get(sessionId).host !== null,
-        //   })
-        // );
       }
     }
-    //     const session = sessions.get(sessionId);
-    // session?.guests.forEach((guest) => {
-    //   if (guest.readyState === WebSocket.OPEN) {
-    //     guest.send(JSON.stringify({ type: "your-message-type", payload: "Hello guest!" }));
-    // }
-    // });
+
     if (data.type === "leave") {
       const { role, sessionId } = data;
 
@@ -135,31 +116,29 @@ wss.on("connection", (ws) => {
       }
 
       if (role === "guest")
-        console.log(
-          `Guest disconnected at ${new Date().toLocaleTimeString()}.`
-        );
-    }
+        if (sessions.has(sessionId)) {
+          const { sessionId, name } = data;
+          const currentSession = sessions.get(sessionId);
 
-    // if (data.type === "event") {
-    //   console.log("event data: ", data);
-    //   const { sessionId, payload } = data;
-    //   const session = sessions.get(sessionId);
-    //   session.guests.forEach((g: any) =>
-    //     g.send(JSON.stringify({ type: "event", payload }))
-    //   );
-    // }
+          const updatedGuests = currentSession?.guests || [];
+          updatedGuests.filter((g: GuestType) => g.name !== name);
+          sessions.set(sessionId, {
+            ...currentSession,
+            guests: updatedGuests,
+          });
+        }
+      console.log(`Guest disconnected at ${new Date().toLocaleTimeString()}.`);
+    }
   });
   ws.on("close", () => {
     console.log("WebSocket disconnected");
     for (const [sessionId, session] of sessions.entries()) {
-      session.guests = session.guests.filter((g: WebSocket) => g !== ws);
-      if (session.host === ws) {
+      session.guests = session.guests.filter((g: GuestType) => g.socket !== ws);
+      if (session.host?.socket === ws) {
         console.log(`Host of session ${sessionId} disconnected`);
         sessions.delete(sessionId);
       }
     }
-
-    // (Optional) Clean up sessions here if needed
   });
 
   ws.on("error", (err) => {

@@ -4,8 +4,6 @@
   const isHost = true;
   type ElType = { id: string; type: string };
 
-  let registered = false;
-
   function assignCobIds() {
     const cobIdArr: ElType[] = [];
 
@@ -20,12 +18,21 @@
       JSON.stringify({
         type: "register",
         role: "host",
+        name: "Sam",
         sessionId,
         cobIdArr,
       })
     );
 
     return cobIdArr;
+  }
+
+  function sendSafely(data: any) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(data));
+    } else {
+      console.warn("WebSocket not ready, skipping send", data);
+    }
   }
 
   function detectRouteChange(callback: () => void) {
@@ -50,13 +57,12 @@
 
       const html = document.documentElement.outerHTML;
       const payload = {
-        type: "dom-update",
         html,
         width: window.innerWidth,
         height: window.innerHeight,
         url: window.location.href,
       };
-      ws.send(JSON.stringify({ type: "snapshot", sessionId, payload }));
+      sendSafely({ type: "snapshot", sessionId, payload });
     }, 50);
   });
 
@@ -72,7 +78,7 @@
             sessionId,
           })
         );
-        registered = true;
+        console.log("registered");
 
         requestAnimationFrame(() => {
           const html = document.documentElement.outerHTML;
@@ -83,13 +89,14 @@
             width: window.innerWidth,
             height: window.innerHeight,
           };
-          ws.send(JSON.stringify({ type: "snapshot", sessionId, payload }));
+          console.log("sending first snapshot");
+          sendSafely({ type: "snapshot", sessionId, payload });
         });
       }
     };
   });
 
-  if (isHost && registered) {
+  if (isHost) {
     window.addEventListener("resize", () => {
       const data = {
         type: "event",
@@ -100,7 +107,8 @@
           height: window.innerHeight,
         },
       };
-      ws.send(JSON.stringify(data));
+      console.log("sending resize");
+      sendSafely(data);
     });
 
     document.addEventListener("scroll", (e) => {
@@ -115,7 +123,8 @@
           scrollY: window.scrollY,
         },
       };
-      ws.send(JSON.stringify(data));
+      console.log("sending scroll");
+      sendSafely(data);
     });
 
     document.addEventListener("mousemove", (e) => {
@@ -124,7 +133,8 @@
         sessionId,
         payload: { action: "mousemove", x: e.clientX, y: e.clientY },
       };
-      ws.send(JSON.stringify(data));
+
+      sendSafely(data);
     });
 
     document.addEventListener("input", (e) => {
@@ -140,7 +150,8 @@
           value: target.value,
         },
       };
-      ws.send(JSON.stringify(data));
+      console.log("sending input");
+      sendSafely(data);
     });
 
     document.querySelectorAll("select").forEach((select) => {
@@ -154,8 +165,8 @@
           target: cobId,
           value: value,
         };
-
-        ws.send(JSON.stringify({ type: "event", sessionId, payload }));
+        console.log("sending change");
+        sendSafely({ type: "event", sessionId, payload });
       });
     });
 
@@ -166,7 +177,8 @@
         target: el.getAttribute("data-cob-id"),
         value: el.value,
       };
-      ws.send(JSON.stringify({ type: "event", sessionId, payload }));
+      console.log("sending change2");
+      sendSafely({ type: "event", sessionId, payload });
     });
 
     document.addEventListener("click", (e) => {
@@ -175,7 +187,8 @@
         sessionId,
         payload: { action: "click", x: e.clientX, y: e.clientY },
       };
-      ws.send(JSON.stringify(data));
+      console.log("sending click");
+      sendSafely(data);
     });
 
     document.addEventListener("click", (e) => {
@@ -187,7 +200,7 @@
           href: anchor.href,
           target: anchor.getAttribute("data-cob-id") || null,
         };
-        ws.send(JSON.stringify({ type: "event", sessionId, payload }));
+        sendSafely({ type: "event", sessionId, payload });
       }
     });
 
@@ -200,7 +213,7 @@
         sessionId,
         payload: { action: "submit", target: cobId },
       };
-      ws.send(JSON.stringify(data));
+      sendSafely(data);
     });
   }
 

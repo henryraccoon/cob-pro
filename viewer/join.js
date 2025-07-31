@@ -60,7 +60,7 @@ function showCursor(x, y, document) {
   // Use a simple SVG arrow that looks like a cursor
   const svg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="24" viewBox="0 0 24 36">
-    <path d="M2,1 L22,18 L14,18 L18,35 L10,35 L6,18 L2,18 Z" fill="white" stroke="red" stroke-width="1.5"/>
+    <path d="M2,1 L22,18 L14,18 L18,35 L10,35 L6,18 L2,18 Z" fill="white" stroke="green" stroke-width="1.5"/>
   </svg>
 `;
 
@@ -96,7 +96,6 @@ function showCursor(x, y, document) {
 }
 
 ws.onopen = () => {
-  // Ask the server if host is available
   ws.send(
     JSON.stringify({ type: "register", role: "guest", name: "Eric", sessionId })
   );

@@ -1,15 +1,32 @@
-import { hostname } from "os";
-import { json } from "stream/consumers";
 import WebSocket from "ws";
 
 const wss = new WebSocket.Server({ port: 8080 });
 console.log("WebSocket server started on ws://localhost:8080");
 let snapshot: string;
 
+type SessionType = {
+  host: { name: string; socket: WebSocket };
+  guests: { name: string; socket: WebSocket }[];
+};
+
+//TODO: after disconnecting don't wipe out whole session.
+//TODO: implement separate registering guests and actually starting cobrowsing
+//TODO: fix wrong cursor render before resize
+//TODO: maybe add time out for both host and guest for reloads accidental reconnects
+
 const sessions = new Map(); //key: sessionId, value: {host, guests[]}
 
 type ElType = { id: string; type: string };
 type GuestType = { socket: WebSocket; name: string };
+
+function sendHostStatus(guestSocket: WebSocket, available: boolean) {
+  guestSocket.send(
+    JSON.stringify({
+      type: "host-status",
+      available,
+    })
+  );
+}
 
 wss.on("connection", (ws) => {
   console.log("New WebSocket connection");
@@ -60,16 +77,18 @@ wss.on("connection", (ws) => {
     if (data.type === "event") {
       const { sessionId, payload } = data;
 
-      if (
-        payload.action === "scroll" ||
-        payload.action === "resize" ||
-        payload.action === "select" ||
-        payload.action === "select-open" ||
-        payload.action === "input" ||
-        payload.action === "focus" ||
-        payload.action === "click" ||
-        payload.action === "mousemove"
-      ) {
+      const allowedActions = [
+        "scroll",
+        "resize",
+        "select",
+        "select-open",
+        "input",
+        "focus",
+        "click",
+        "mousemove",
+      ];
+
+      if (allowedActions.includes(payload.action)) {
         const { host, guests } = sessions.get(sessionId);
         if (guests.length > 0) {
           console.log(`sending guest event data (${payload.action})`);
@@ -90,53 +109,82 @@ wss.on("connection", (ws) => {
 
       if (role === "host") {
         session.host = { socket: ws, name: data.name };
+        if (session.guests.length > 0) {
+          session.guests.forEach((g: GuestType) =>
+            sendHostStatus(g.socket, true)
+          );
+        }
         console.log("Host registered.");
       } else if (role === "guest") {
-        session.guests.push({ socket: ws, name: data.name });
-        console.log("Guest connected.");
-        ws.send(
-          JSON.stringify({
-            type: "host-status",
-            available: sessions.get(sessionId).host.name !== null,
-          })
+        const alreadyConnected = session.guests.some(
+          (g: GuestType) => g.socket === ws || g.name === data.name
         );
+        if (!alreadyConnected) {
+          session.guests.push({ socket: ws, name: data.name });
+          console.log("Guest connected.");
+        } else {
+          console.log("Dublicate/reconected guest ignored");
+        }
+        const host = sessions.get(sessionId)?.host;
+        const hostAvailable = host !== null && host !== undefined;
+        sendHostStatus(ws, hostAvailable);
       }
     }
 
     if (data.type === "leave") {
-      const { role, sessionId } = data;
+      const { role, sessionId, name } = data;
 
       if (role === "host") {
+        const session = sessions.get(sessionId);
+        if (session.guests.length > 0)
+          session.guests.forEach((g: GuestType) =>
+            sendHostStatus(g.socket, false)
+          );
         console.log(
-          `Host closed the window. Session ${sessionId} has ended at ${new Date().toLocaleTimeString()}.`
+          `Host ${name} closed the window at ${new Date().toLocaleTimeString()}.`
         );
-        if (sessions.has(sessionId)) {
-          sessions.delete(sessionId);
-        }
+        session.host = null;
       }
 
-      if (role === "guest")
-        if (sessions.has(sessionId)) {
-          const { sessionId, name } = data;
-          const currentSession = sessions.get(sessionId);
+      if (role === "guest" && sessions.has(sessionId)) {
+        const currentSession = sessions.get(sessionId);
 
-          const updatedGuests = currentSession?.guests || [];
-          updatedGuests.filter((g: GuestType) => g.name !== name);
-          sessions.set(sessionId, {
-            ...currentSession,
-            guests: updatedGuests,
-          });
-        }
-      console.log(`Guest disconnected at ${new Date().toLocaleTimeString()}.`);
+        const updatedGuests = currentSession?.guests || [];
+        const newGuests = updatedGuests.filter(
+          (g: GuestType) => g.name !== name
+        );
+        sessions.set(sessionId, {
+          ...currentSession,
+          guests: newGuests,
+        });
+      }
+      console.log(
+        `Guest ${name} disconnected at ${new Date().toLocaleTimeString()}.`
+      );
     }
   });
   ws.on("close", () => {
     console.log("WebSocket disconnected");
     for (const [sessionId, session] of sessions.entries()) {
-      session.guests = session.guests.filter((g: GuestType) => g.socket !== ws);
       if (session.host?.socket === ws) {
-        console.log(`Host of session ${sessionId} disconnected`);
+        if (session.guests.length > 0)
+          session.guests.forEach((g: GuestType) =>
+            sendHostStatus(g.socket, false)
+          );
+        console.log(
+          `Host ${session.host.name} of session ${sessionId} disconnected`
+        );
+        session.host = null;
+      }
+
+      const updatedGuests = session.guests.filter(
+        (g: GuestType) => g.socket !== ws
+      );
+      sessions.set(sessionId, { ...session, guests: updatedGuests });
+
+      if (!session.host && session.guests.length === 0) {
         sessions.delete(sessionId);
+        console.log(`Session ${sessionId} fully cleaned up`);
       }
     }
   });

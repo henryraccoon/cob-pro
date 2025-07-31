@@ -204,7 +204,7 @@
       }
     });
 
-    //should add values that are breing submitted
+    //should add values that are being submitted
     document.addEventListener("submit", (e) => {
       const target = e.target as HTMLInputElement;
       const cobId = target.getAttribute("data-cob-id");
@@ -274,10 +274,10 @@
         type: "leave",
         role: isHost ? "host" : "guest",
         sessionId,
+        name: "Sam",
         time: new Date().toLocaleTimeString(),
       })
     );
-    registered = false;
     ws.close();
   });
 
@@ -289,6 +289,5 @@
         time: new Date().toLocaleTimeString(),
       })
     );
-    registered = false;
   };
 })();

@@ -139,6 +139,12 @@ ws.onmessage = (msg) => {
     viewerFrame.contentWindow.focus();
   }
 
+  if (data.type === "session-ended") {
+    iframeWrapper.style.display = "none";
+    viewerFrame.srcdoc = "";
+    return;
+  }
+
   if (data.type === "event") {
     if (data.payload.action === "scroll") {
       const { scrollX, scrollY } = data.payload;
@@ -180,7 +186,7 @@ ws.onmessage = (msg) => {
 
     if (data.payload.action === "select-open") {
       const el = viewerFrame.contentWindow.document.querySelector(
-        `[data-cob-id="${payload.target}"]`
+        `[data-cob-id="${data.payload.target}"]`
       );
       if (el && el.tagName === "SELECT") {
         el.focus();
@@ -214,22 +220,25 @@ ws.onmessage = (msg) => {
     }
 
     if (data.payload.action === "select") {
-      console.log("received select data");
       const { target, value } = data.payload;
-      console.log("target: ", target);
-      console.log("value: ", value);
 
       if (viewerFrame && viewerFrame.contentDocument) {
         const el = viewerFrame.contentDocument.querySelector(
           `[data-cob-id="${target}"]`
         );
-        if (el && el.type === "select") {
+        if (el && el.tagName === "select") {
           el.value = value;
           el.dispatchEvent(new Event("input", { bubbles: true }));
           el.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-        if ((el && el.type === "checkbox") || el.type === "radio") {
-          el.checked = true;
+        } else if (el.tagName === "INPUT") {
+          const ie = el;
+          if (ie.type === "checkbox" || ie.type === "radio") {
+            ie.checked = value === true || value === "true";
+            ie.dispatchEvent(new Event("change", { bubbles: true }));
+          } else {
+            ie.value = value;
+            ie.dispatchEvent(new Event("input", { bubbles: true }));
+          }
         }
       }
     }
@@ -257,12 +266,27 @@ joinBtn.addEventListener("click", () => {
 
   // Show iframe
   iframeWrapper.style.display = "block";
+  joinBtn.style.display = "none";
 });
 
 closeBtn.addEventListener("click", () => {
   iframeWrapper.style.display = "none";
   viewerFrame.srcdoc = "";
+  joinBtn.style.display = "block";
   ws.send(
-    JSON.stringify({ type: "leave", sessionId, role: "guest", name: "Eric" })
+    JSON.stringify({
+      type: "guest-closed-cobrowsing",
+      sessionId,
+      role: "guest",
+      name: "Eric",
+    })
   );
+});
+
+window.addEventListener("beforeunload", () => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({ type: "leave", sessionId, role: "guest", name: "Eric" })
+    );
+  }
 });

@@ -14,6 +14,7 @@ type GuestType = { socket: WebSocket; name: string };
 type SessionType = {
   host: { name: string; socket: WebSocket } | null;
   guests: GuestType[];
+  active: boolean;
 };
 
 const sessions = new Map<string, SessionType>();
@@ -39,11 +40,13 @@ wss.on("connection", (ws) => {
       const currentSession = sessions.get(sessionId) || {
         host: null,
         guests: [],
+        active: false,
       };
       let existing = currentSession.guests.find((g) => g.name === guest_name);
 
       if (!existing) {
         currentSession.guests.push({ socket: ws, name: guest_name });
+        currentSession.active = true;
         sessions.set(sessionId, currentSession);
       } else {
         existing.socket = ws;
@@ -105,7 +108,7 @@ wss.on("connection", (ws) => {
     if (data.type === "register") {
       const { role, sessionId, name } = data;
       if (!sessions.has(sessionId))
-        sessions.set(sessionId, { host: null, guests: [] });
+        sessions.set(sessionId, { host: null, guests: [], active: false });
       const session = sessions.get(sessionId)!;
 
       if (role === "host") {
@@ -137,6 +140,7 @@ wss.on("connection", (ws) => {
       if (role === "host") {
         session.host = null;
         session.guests.forEach((g) => sendHostStatus(g.socket, false));
+        session.active = false;
         console.log(
           `Host ${name} closed the window at ${new Date().toLocaleTimeString()}.`
         );
@@ -144,6 +148,7 @@ wss.on("connection", (ws) => {
 
       if (role === "guest") {
         session.guests = session.guests.filter((g) => g.name !== name);
+        if (session.guests.length === 0) session.active = false;
         if (session.host?.socket) {
           session.host.socket.send(
             JSON.stringify({
@@ -157,6 +162,7 @@ wss.on("connection", (ws) => {
           `Guest ${name} disconnected at ${new Date().toLocaleTimeString()}.`
         );
         sessions.set(sessionId, session);
+        session.guests.forEach((g) => sendHostStatus(g.socket, true));
       }
     }
 
@@ -174,9 +180,12 @@ wss.on("connection", (ws) => {
             reason: "Host ended cobrowsing session.",
           })
         );
-        guest.socket.close();
 
-        session.guests = session.guests.filter((g) => g.name !== guestName);
+        // guest.socket.close();
+
+        // session.guests = session.guests.filter((g) => g.name !== guestName);
+        sendHostStatus(guest.socket, true);
+        if (session.guests.length === 0) session.active = false;
         session.host.socket.send(
           JSON.stringify({
             type: "viewer-disconnected",

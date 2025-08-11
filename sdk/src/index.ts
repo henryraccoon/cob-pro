@@ -203,11 +203,13 @@
       }
       if (data.type === "guest-started-cobrowsing") {
         showToast(`Viewer ${data.name} started a cobrowsing session.`);
+        guestConnected = true;
         cobrowsingStarted = true;
         safeCreateEndSessionButton();
       }
       if (data.type === "guest-closed-cobrowsing") {
         showToast(`Viewer ${data.name} started a cobrowsing session.`);
+
         cobrowsingStarted = false;
       }
     } catch (err) {
@@ -215,7 +217,7 @@
     }
   };
 
-  if (isHost) {
+  if (isHost && cobrowsingStarted) {
     window.addEventListener("resize", () => {
       const data = {
         type: "event",

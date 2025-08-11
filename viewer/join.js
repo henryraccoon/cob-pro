@@ -142,6 +142,7 @@ ws.onmessage = (msg) => {
   if (data.type === "session-ended") {
     iframeWrapper.style.display = "none";
     viewerFrame.srcdoc = "";
+    joinBtn.style.display = "block";
     return;
   }
 

@@ -181,9 +181,6 @@ wss.on("connection", (ws) => {
           })
         );
 
-        // guest.socket.close();
-
-        // session.guests = session.guests.filter((g) => g.name !== guestName);
         sendHostStatus(guest.socket, true);
         if (session.guests.length === 0) session.active = false;
         session.host.socket.send(
